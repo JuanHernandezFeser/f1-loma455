@@ -60,7 +60,9 @@ export default function HomePage() {
     queryFn: () => api.getMeetings({ year: currentYear }),
   });
 
-  const nextMeeting = meetings?.find((m) => new Date(m.date_start) > new Date());
+  // Filter out pre-season testing
+  const raceMeetings = meetings?.filter((m) => !m.meeting_name.toLowerCase().includes("testing"));
+  const nextMeeting = raceMeetings?.find((m) => new Date(m.date_start) > new Date());
 
   const { data: sessions } = useQuery({
     queryKey: ["sessions-next", nextMeeting?.meeting_key],
@@ -216,7 +218,7 @@ export default function HomePage() {
               })}
             </div>
           ) : (
-            <div className="p-8 text-center text-muted-foreground text-sm">Cargando standings...</div>
+            <div className="p-8 text-center text-muted-foreground text-sm">Cargando clasificación...</div>
           )}
         </section>
 
@@ -235,9 +237,9 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {meetings ? (
+          {raceMeetings ? (
             <div className="divide-y divide-border/30 max-h-[420px] overflow-y-auto">
-              {meetings.map((m) => {
+              {raceMeetings.map((m) => {
                 const isPast = new Date(m.date_end) < new Date();
                 const isNext = m.meeting_key === nextMeeting?.meeting_key;
                 return (

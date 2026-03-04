@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api, Meeting, Session, SessionResult, Driver } from "@/lib/api";
 import { useSearchParams } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, Loader2, Flag } from "lucide-react";
 
 function SessionResults({ session, drivers }: { session: Session; drivers: Map<number, Driver> }) {
@@ -92,11 +92,41 @@ export default function CalendarPage() {
     queryFn: () => api.getMeetings({ year }),
   });
 
+  // Filter out pre-season testing
+  const raceMeetings = useMemo(
+    () => meetings?.filter((m) => !m.meeting_name.toLowerCase().includes("testing")),
+    [meetings]
+  );
+
+  // Find the next race meeting
+  const nextMeeting = useMemo(
+    () => raceMeetings?.find((m) => new Date(m.date_end) >= new Date()),
+    [raceMeetings]
+  );
+
+  // Fetch all sessions for expanded meeting to get race date
   const { data: sessions } = useQuery({
     queryKey: ["sessions", expandedMeeting],
     queryFn: () => api.getSessions({ meeting_key: expandedMeeting! }),
     enabled: !!expandedMeeting,
   });
+
+  // Also fetch sessions for all meetings to get race dates
+  const { data: allSessions } = useQuery({
+    queryKey: ["all-sessions-calendar", year],
+    queryFn: () => api.getSessions({ year, session_type: "Race" }),
+  });
+
+  // Map meeting_key -> race session date
+  const raceDateMap = useMemo(() => {
+    const map = new Map<number, string>();
+    allSessions?.forEach((s) => {
+      if (s.session_type === "Race") {
+        map.set(s.meeting_key, s.date_start);
+      }
+    });
+    return map;
+  }, [allSessions]);
 
   const latestSession = sessions?.[sessions.length - 1];
 
@@ -124,19 +154,21 @@ export default function CalendarPage() {
       </div>
 
       <div className="space-y-3">
-        {meetings?.map((m) => {
+        {raceMeetings?.map((m) => {
           const isPast = new Date(m.date_end) < new Date();
           const isExpanded = expandedMeeting === m.meeting_key;
+          const isNext = nextMeeting?.meeting_key === m.meeting_key;
+          const raceDate = raceDateMap.get(m.meeting_key);
 
           return (
-            <div key={m.meeting_key} className="rounded-xl border border-border/50 bg-card overflow-hidden">
+            <div key={m.meeting_key} className={`rounded-xl border bg-card overflow-hidden ${isNext ? "border-green-500/50" : "border-border/50"}`}>
               <button
                 onClick={() => setExpandedMeeting(isExpanded ? null : m.meeting_key)}
                 className="w-full flex items-center gap-4 px-5 py-4 hover:bg-accent/30 transition-colors"
               >
                 <div className="w-16 text-center">
                   <p className="text-xs font-mono text-muted-foreground">
-                    {new Date(m.date_start).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
+                    {new Date(raceDate || m.date_end).toLocaleDateString("es-ES", { day: "2-digit", month: "short" })}
                   </p>
                 </div>
                 <div className="flex-1 text-left min-w-0">
@@ -145,7 +177,12 @@ export default function CalendarPage() {
                   </p>
                   <p className="text-xs text-muted-foreground">{m.circuit_short_name} • {m.location}</p>
                 </div>
-                {isPast && (
+                {isNext && (
+                  <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded font-semibold shrink-0">
+                    SIGUIENTE CARRERA
+                  </span>
+                )}
+                {isPast && !isNext && (
                   <span className="text-[10px] bg-secondary text-muted-foreground px-2 py-0.5 rounded font-medium shrink-0">
                     COMPLETADO
                   </span>

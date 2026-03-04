@@ -7,30 +7,41 @@ export default function StandingsPage() {
   const [tab, setTab] = useState<"drivers" | "teams">("drivers");
   const currentYear = new Date().getFullYear();
 
-  // Get latest race session
-  const { data: raceSessions } = useQuery({
+  // Get race sessions for current year
+  const { data: raceSessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ["race-sessions", currentYear],
     queryFn: () => api.getSessions({ year: currentYear, session_type: "Race" }),
   });
 
   const latestRace = raceSessions?.filter((s) => new Date(s.date_end) < new Date()).pop();
 
+  // Fallback to previous year if no races completed yet
+  const { data: prevYearSessions } = useQuery({
+    queryKey: ["race-sessions", currentYear - 1],
+    queryFn: () => api.getSessions({ year: currentYear - 1, session_type: "Race" }),
+    enabled: !latestRace && !sessionsLoading,
+  });
+
+  const fallbackRace = prevYearSessions?.filter((s) => new Date(s.date_end) < new Date()).pop();
+  const activeRace = latestRace || fallbackRace;
+  const standingsYear = latestRace ? currentYear : currentYear - 1;
+
   const { data: driverStandings, isLoading: driversLoading } = useQuery({
-    queryKey: ["champ-drivers", latestRace?.session_key],
-    queryFn: () => api.getChampionshipDrivers({ session_key: latestRace!.session_key }),
-    enabled: !!latestRace,
+    queryKey: ["champ-drivers", activeRace?.session_key],
+    queryFn: () => api.getChampionshipDrivers({ session_key: activeRace!.session_key }),
+    enabled: !!activeRace,
   });
 
   const { data: teamStandings, isLoading: teamsLoading } = useQuery({
-    queryKey: ["champ-teams", latestRace?.session_key],
-    queryFn: () => api.getChampionshipTeams({ session_key: latestRace!.session_key }),
-    enabled: !!latestRace,
+    queryKey: ["champ-teams", activeRace?.session_key],
+    queryFn: () => api.getChampionshipTeams({ session_key: activeRace!.session_key }),
+    enabled: !!activeRace,
   });
 
   const { data: drivers } = useQuery({
-    queryKey: ["drivers-standings", latestRace?.session_key],
-    queryFn: () => api.getDrivers({ session_key: latestRace!.session_key }),
-    enabled: !!latestRace,
+    queryKey: ["drivers-standings", activeRace?.session_key],
+    queryFn: () => api.getDrivers({ session_key: activeRace!.session_key }),
+    enabled: !!activeRace,
   });
 
   const driverMap = new Map(drivers?.map((d) => [d.driver_number, d]));
@@ -40,13 +51,18 @@ export default function StandingsPage() {
   const maxDriverPoints = sortedDrivers?.[0]?.points_current || 1;
   const maxTeamPoints = sortedTeams?.[0]?.points_current || 1;
 
-  const isLoading = driversLoading || teamsLoading;
+  const isLoading = sessionsLoading || driversLoading || teamsLoading;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Trophy className="h-5 w-5 text-primary" />
-        <h1 className="text-2xl font-extrabold">Clasificación {currentYear}</h1>
+        <h1 className="text-2xl font-extrabold">Clasificación {standingsYear}</h1>
+        {!latestRace && fallbackRace && (
+          <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded font-medium">
+            Temporada anterior — aún no hay carreras en {currentYear}
+          </span>
+        )}
       </div>
 
       {/* Tabs */}
@@ -74,6 +90,11 @@ export default function StandingsPage() {
       {isLoading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : !activeRace ? (
+        <div className="text-center py-20 text-muted-foreground">
+          <p className="text-lg font-semibold">No hay datos de clasificación disponibles</p>
+          <p className="text-sm mt-2">Las clasificaciones se actualizarán después de la primera carrera de la temporada</p>
         </div>
       ) : (
         <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
@@ -116,7 +137,6 @@ export default function StandingsPage() {
             <div className="divide-y divide-border/30">
               {sortedTeams.map((t, i) => {
                 const barWidth = (t.points_current / maxTeamPoints) * 100;
-                // Find team color from drivers
                 const teamDriver = drivers?.find((d) => d.team_name === t.team_name);
                 const teamColor = teamDriver?.team_colour;
                 return (
