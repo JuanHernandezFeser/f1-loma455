@@ -6,6 +6,15 @@
   <meta name="theme-color" content="#000000" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    (function () {
+      const redirect = sessionStorage.redirect;
+      delete sessionStorage.redirect;
+      if (redirect && redirect !== location.href) {
+        history.replaceState(null, null, redirect);
+      }
+    })();
+  </script>
   <title>F1 Loma455</title>
   <meta name="description"
     content="Sigue la Fórmula 1 en tiempo real: resultados, clasificaciones, telemetría y posiciones de pilotos en vivo.">
