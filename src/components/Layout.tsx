@@ -20,11 +20,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container flex h-16 items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-primary">
-              <Flag className="h-4 w-4 text-primary-foreground" />
+            <div className="flex h-12 w-12 items-center justify-center rounded">
+              <img
+                src="/favicon.ico"
+                alt="Logo"
+                className="h-12 w-12 object-contain"
+              />
             </div>
             <span className="text-lg font-bold tracking-tight">
-              F1<span className="text-gradient-red">Tracker</span>
+              F1<span className="text-gradient-red">Loma455</span>
             </span>
           </Link>
 
@@ -36,11 +40,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                  }`}
+                    }`}
                 >
                   <item.icon className="h-4 w-4" />
                   {item.label}
@@ -74,11 +77,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   key={item.to}
                   to={item.to}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${
-                    isActive
+                  className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${isActive
                       ? "bg-primary/10 text-primary"
                       : "text-muted-foreground hover:text-foreground"
-                  }`}
+                    }`}
                 >
                   <item.icon className="h-4 w-4" />
                   {item.label}
